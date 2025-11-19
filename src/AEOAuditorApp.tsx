@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import type { ReactNode } from "react";
 
 /**
  * AEO Readiness Auditor — Single-file React app (TypeScript)
  * - Paste this into src/AEOAuditorApp.tsx
  * - Requires Tailwind (or replace classNames with your CSS)
  */
+
+const FAQ_API_URL = import.meta.env.VITE_FAQ_API_URL as string | undefined;
 
 /* --------------------------- Utility helpers --------------------------- */
 
@@ -66,17 +69,81 @@ function unique<T>(arr: T[]) {
   return Array.from(new Set(arr));
 }
 
+/* ---------- FAQ / heading helpers (smarter + product/brand focus) ----- */
+
 function looksLikeQuestion(s: string) {
   const t = s.trim();
-  return /^(what|why|how|when|where|who|which|can|do|does|is|are|should|could|will|won't|can't)\b/i.test(t) || t.endsWith("?");
+  return /^(what|why|how|when|where|who|which|can|do|does|is|are|should|could|will|won't|can't|may)\b/i.test(t) || t.endsWith("?");
 }
 
-function toQuestion(s: string) {
-  const t = s.trim();
+/** Headings we *don't* want as FAQs: nav / UI / generic marketing blocks */
+const CTA_HEADING_PATTERNS: RegExp[] = [
+  /customer reviews?/i,
+  /reviews?/i,
+  /recently viewed/i,
+  /you may also like/i,
+  /related products?/i,
+  /support/i,
+  /help/i,
+  /explore/i,
+  /about us/i,
+  /contact us/i,
+  /my account/i,
+  /login/i,
+  /sign in/i,
+  /basket/i,
+  /cart/i,
+  /wishlist/i,
+  /newsletter/i,
+  /follow us/i,
+  /social/i,
+  /shop now/i,
+  /view all/i,
+  /special offer/i,
+  /limited time offer/i,
+  /see more/i,
+  /prospera home/i,
+];
+
+function isMarketingCTAHeading(h: string) {
+  const t = h.trim();
+  if (t.length < 5) return true; // too short to be meaningful
+  return CTA_HEADING_PATTERNS.some((re) => re.test(t));
+}
+
+/** Turn a heading into a more natural, product/brand/category style question */
+function headingToQuestion(raw: string) {
+  const t = raw.trim().replace(/\s+/g, " ");
+  if (!t) return "";
+
+  // Already a question? Just normalize
   if (looksLikeQuestion(t)) return t.endsWith("?") ? t : t + "?";
-  if (/\bguide|tutorial|steps|process|setup|install|configure|build\b/i.test(t))
-    return `How to ${t.replace(/^(how to|guide|tutorial)\s*/i, "").replace(/[.?!]+$/, "")}?`;
-  return `What is ${t.replace(/[.?!]+$/, "")}?`;
+
+  const base = t.replace(/[.?!]+$/, "");
+
+  // Offers / promos
+  if (/^get\b/i.test(base)) {
+    return `How can I ${base.replace(/^get\b/i, "").trim()}?`;
+  }
+  if (/offer/i.test(base)) {
+    return `What offer is available for ${base.replace(/offer/i, "").trim()}?`;
+  }
+  if (/\bfree\b/i.test(base)) {
+    return `What free gifts or bonuses are included with ${base}?`;
+  }
+
+  // Product / category focus
+  if (/\b(product|bundle|kit|plan|subscription|tester|analyser|manifold|set)\b/i.test(base)) {
+    return `What should I know about the ${base}?`;
+  }
+
+  // Brand or collection focus
+  if (/\bcollection\b/i.test(base)) {
+    return `What is included in the ${base} collection?`;
+  }
+
+  // Generic fallback
+  return `What should I know about ${base}?`;
 }
 
 function absoluteUrl(base: string, href: string) {
@@ -160,6 +227,7 @@ export type Report = {
   suggestedFAQs: { question: string; answer: string }[];
   faqJsonLD: string;
   notes: string[];
+  bodyPreview: string; // trimmed body text for LLM prompts
   /** Heuristic: looks like reader-mode / sanitized HTML */
   isSanitized?: boolean;
   sanitizedReasons?: string[];
@@ -446,6 +514,9 @@ function analyzeDocument(html: string, baseUrl: string): Report {
   const wordCount = words(bodyText).length;
   const readingEase = fleschReadingEase(bodyText);
 
+  // keep a trimmed preview for LLM prompts (avoid sending whole HTML)
+  const bodyPreview = bodyText.slice(0, 4000);
+
   // Sanitization check (reader-mode / proxy-cleaned HTML)
   const { isSanitized, reasons: sanitizedReasons } = detectSanitizedHTML(doc, bodyText);
 
@@ -495,11 +566,19 @@ function analyzeDocument(html: string, baseUrl: string): Report {
   const updatedDetected =
     /updated|last\s+updated|modified/i.test(doc.body.textContent || "") || !!doc.querySelector("time[datetime]");
 
-  const qaHeadings = h2s.filter(looksLikeQuestion);
+  // FAQ heading candidates (skip nav / CTA)
+  const faqHeadingCandidates = unique(
+    h2s
+      .map((h) => h.trim())
+      .filter(Boolean)
+      .filter((h) => !isMarketingCTAHeading(h))
+  );
 
-  // Suggested FAQs
-  const suggestedFaqs = unique(h2s.filter(Boolean).slice(0, 8)).map((h) => ({
-    question: toQuestion(h),
+  const qaHeadings = faqHeadingCandidates.filter(looksLikeQuestion);
+
+  // Suggested FAQs (heuristic fallback)
+  const suggestedFaqs = faqHeadingCandidates.slice(0, 8).map((h) => ({
+    question: headingToQuestion(h),
     answer: "Add a concise, 1–3 sentence answer in plain language. Include a key fact or step.",
   }));
 
@@ -649,6 +728,7 @@ function analyzeDocument(html: string, baseUrl: string): Report {
     suggestedFAQs: suggestedFaqs,
     faqJsonLD,
     notes,
+    bodyPreview,
     isSanitized,
     sanitizedReasons,
   };
@@ -680,8 +760,8 @@ function Card({
 }: {
   title: string;
   subtitle?: string;
-  children: React.ReactNode;
-  actions?: React.ReactNode;
+  children: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <div className="bg-white rounded-2xl shadow p-5">
@@ -802,6 +882,7 @@ function RecommendationsCard({ report }: { report: Report }) {
   );
 }
 
+/* ------------------ FAQ card with optional LLM integration ------------ */
 function FAQSuggestionsCard({
   report,
   onCopy,
@@ -809,34 +890,109 @@ function FAQSuggestionsCard({
   report: Report;
   onCopy: (t: string) => void;
 }) {
+  const [aiFaqs, setAiFaqs] = useState<{ question: string; answer: string }[] | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // ✅ Only show FAQs after AI has generated them
+  const faqsToRender = aiFaqs && aiFaqs.length > 0 ? aiFaqs : [];
+
+  async function handleGenerateAI() {
+    if (!FAQ_API_URL) {
+      setAiError("AI FAQ endpoint is not configured. Set VITE_FAQ_API_URL in your .env file.");
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch(FAQ_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: report.url,
+          title: report.title,
+          h1: report.h1,
+          description: report.description,
+          headings: report.h2s,
+          bodyPreview: report.bodyPreview,
+        }),
+      });
+      if (!res.ok) throw new Error(`FAQ API error: ${res.status} ${res.statusText}`);
+      const data = await res.json();
+      if (!data || !Array.isArray(data.faqs)) {
+        throw new Error("FAQ API returned unexpected format (expected { faqs: [{question, answer}] }).");
+      }
+      const cleaned = data.faqs
+        .map((f: any) => ({
+          question: String(f.question || "").trim(),
+          answer: String(f.answer || "").trim(),
+        }))
+        .filter((f: any) => f.question.length > 0);
+      setAiFaqs(cleaned);
+    } catch (e: any) {
+      setAiError(e?.message || "Failed to generate FAQs with AI.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  const faqJsonForCopy = faqsToRender.length > 0 ? makeFAQJsonLD(faqsToRender) : "";
+
   return (
-    <Card title="FAQ Suggestions" subtitle="Auto-generated from your headings">
-      <ul className="list-disc pl-6 text-sm space-y-2">
-        {report.suggestedFAQs.slice(0, 6).map((qa, i) => (
-          <li key={i}>
-            <span className="font-medium">Q:</span> {qa.question}
-            <br />
-            <span className="font-medium">A:</span> {qa.answer}
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4 flex gap-2">
+    <Card title="FAQ Suggestions" subtitle="Generated by AI from this page">
+      {faqsToRender.length > 0 ? (
+        <ul className="list-disc pl-6 text-sm space-y-2">
+          {faqsToRender.slice(0, 8).map((qa, i) => (
+            <li key={i}>
+              <span className="font-medium">Q:</span> {qa.question}
+              <br />
+              <span className="font-medium">A:</span> {qa.answer}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-600">
+          No FAQs generated yet. Click <span className="font-semibold">Generate AI FAQs</span> to create
+          product/brand/category-focused questions from this page.
+        </p>
+      )}
+
+      {aiError && <p className="mt-2 text-xs text-red-600">{aiError}</p>}
+
+      <div className="mt-4 flex flex-wrap gap-2">
         <button
-          onClick={() => onCopy(report.faqJsonLD)}
-          className="rounded-lg bg-white border border-slate-200 px-3 py-2 text-sm"
+          onClick={() => faqsToRender.length > 0 && onCopy(faqJsonForCopy)}
+          className="rounded-lg bg-white border border-slate-200 px-3 py-2 text-sm disabled:opacity-50"
+          disabled={faqsToRender.length === 0}
         >
           Copy FAQ JSON
         </button>
         <button
-          onClick={() => onCopy(renderFAQMarkdown(report.suggestedFAQs))}
-          className="rounded-lg bg-white border border-slate-200 px-3 py-2 text-sm"
+          onClick={() => faqsToRender.length > 0 && onCopy(renderFAQMarkdown(faqsToRender))}
+          className="rounded-lg bg-white border border-slate-200 px-3 py-2 text-sm disabled:opacity-50"
+          disabled={faqsToRender.length === 0}
         >
           Copy FAQ Markdown
         </button>
+        <button
+          onClick={handleGenerateAI}
+          className="rounded-lg bg-slate-900 text-white px-3 py-2 text-sm disabled:opacity-50"
+          disabled={aiLoading}
+        >
+          {aiLoading ? "Generating…" : "Generate AI FAQs"}
+        </button>
       </div>
+
+      {aiFaqs && aiFaqs.length > 0 && (
+        <p className="mt-1 text-[11px] text-slate-500">
+          FAQs above were generated by your LLM endpoint (VITE_FAQ_API_URL).
+        </p>
+      )}
     </Card>
   );
 }
+
+
 
 function renderFAQMarkdown(qas: { question: string; answer: string }[]) {
   return qas.map((qa) => `### ${qa.question}\n\n${qa.answer}\n`).join("\n");

@@ -1,4 +1,11 @@
 # React + TypeScript + Vite
+# run instructions
+# cd backend
+# npm install        # only first time
+# npm start
+# cd aeoauditor
+# npm install        # if you haven’t already after fixing package.json
+# npm run dev
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
