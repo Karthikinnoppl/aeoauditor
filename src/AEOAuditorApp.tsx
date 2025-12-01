@@ -222,6 +222,7 @@ export type Report = {
   internalLinks: number;
   externalLinks: number;
   subscores: Record<SubscoreKey, number>;
+  subscoreReasons: Record<SubscoreKey, string[]>; //explanation on AEO Scores
   totalScore: number;
   suggestions: string[];
   suggestedFAQs: { question: string; answer: string }[];
@@ -593,59 +594,238 @@ function analyzeDocument(html: string, baseUrl: string): Report {
     InternalLinks: 0,
   };
 
+    // 👇 new: human-readable explanations for why each score is what it is
+  const subscoreReasons: Record<SubscoreKey, string[]> = {
+    ContentClarity: [],
+    StructuredData: [],
+    Readability: [],
+    TechnicalSEO: [],
+    EATTrust: [],
+    MediaAlt: [],
+    InternalLinks: [],
+  };
+
   // Content clarity
   let cc = 0;
-  if (h1) cc += 25;
-  if (title && title.length >= 15 && title.length <= 65) cc += 25;
-  if (description && description.length >= 80 && description.length <= 170) cc += 20;
-  if (wordCount >= 400) cc += 20;
-  else cc += Math.min(20, (wordCount / 400) * 20);
-  if (qaHeadings.length > 0) cc += 10;
+  if (h1) {
+    cc += 25;
+  } else {
+    subscoreReasons.ContentClarity.push(
+      "No H1 found — answer engines lose a clear primary topic signal (worth up to 25 points)."
+    );
+  }
+
+  if (title && title.length >= 15 && title.length <= 65) {
+    cc += 25;
+  } else {
+    subscoreReasons.ContentClarity.push(
+      "Title is missing or outside the 15–65 character range, which reduces how well AI can summarize this page."
+    );
+  }
+
+  if (description && description.length >= 80 && description.length <= 170) {
+    cc += 20;
+  } else {
+    subscoreReasons.ContentClarity.push(
+      "Meta description is missing or not in the 80–170 character window, so answer engines have a weaker summary."
+    );
+  }
+
+  if (wordCount >= 400) {
+    cc += 20;
+  } else {
+    cc += Math.min(20, (wordCount / 400) * 20);
+    subscoreReasons.ContentClarity.push(
+      `Content depth is low (${wordCount} words) — long-form pages (400–1200+ words) are easier for AEO to mine for answers.`
+    );
+  }
+
+  if (qaHeadings.length > 0) {
+    cc += 10;
+  } else {
+    subscoreReasons.ContentClarity.push(
+      "No question-style subheadings detected; converting key H2/H3s into “What / How / Why…” questions improves AEO."
+    );
+  }
+
   subs.ContentClarity = clamp(cc);
+
 
   // Structured data
   let sd = 0;
-  if (faqsDetected) sd += 35;
-  if (howToDetected) sd += 15;
-  if (articleDetected) sd += 15;
-  if (breadcrumbDetected) sd += 15;
-  if (authorDetected) sd += 20;
+  if (faqsDetected) {
+    sd += 35;
+  } else {
+    subscoreReasons.StructuredData.push(
+      "No FAQ schema detected — FAQPage JSON-LD helps answer engines extract direct Q&A."
+    );
+  }
+
+  if (howToDetected) {
+    sd += 15;
+  } else if (/\b(steps|guide|setup|install|configure)\b/i.test(bodyText)) {
+    subscoreReasons.StructuredData.push(
+      "Page looks like a guide/steps but has no HowTo schema — mark it up so AI can understand the steps."
+    );
+  }
+
+  if (articleDetected) {
+    sd += 15;
+  } else {
+    subscoreReasons.StructuredData.push(
+      "No Article schema detected — adding it clarifies the main entity, headline, and author for AEO."
+    );
+  }
+
+  if (breadcrumbDetected) {
+    sd += 15;
+  } else {
+    subscoreReasons.StructuredData.push(
+      "No BreadcrumbList schema — this reduces how well answer engines understand site hierarchy."
+    );
+  }
+
+  if (authorDetected) {
+    sd += 20;
+  } else {
+    subscoreReasons.StructuredData.push(
+      "No clear author/organization schema — answer engines rely on this for E-E-A-T and citation."
+    );
+  }
+
   subs.StructuredData = clamp(sd);
 
+
+  // Readability
   // Readability
   let r = 0;
-  if (readingEase >= 60 && readingEase <= 80) r = 85;
-  else if (readingEase > 80) r = 95;
-  else if (readingEase >= 45) r = 65;
-  else r = 40;
+  if (readingEase >= 60 && readingEase <= 80) {
+    r = 85;
+  } else if (readingEase > 80) {
+    r = 95;
+  } else if (readingEase >= 45) {
+    r = 65;
+    subscoreReasons.Readability.push(
+      `Reading ease score is ${Math.round(
+        readingEase
+      )} — content is somewhat dense; shorter sentences and simpler wording will help AEO extract answers.`
+    );
+  } else {
+    r = 40;
+    subscoreReasons.Readability.push(
+      `Reading ease score is ${Math.round(
+        readingEase
+      )} — text is hard to read; simplify language and break up long paragraphs.`
+    );
+  }
   subs.Readability = clamp(r);
+
 
   // Technical SEO
   let ts = 0;
-  if (lang) ts += 20;
-  if (hasViewport) ts += 25;
-  if (hasCanonical) ts += 25;
-  if (hasOG) ts += 15;
-  if (updatedDetected) ts += 15;
+  if (lang) {
+    ts += 20;
+  } else {
+    subscoreReasons.TechnicalSEO.push(
+      "Missing <html lang> attribute — AEO systems need this to interpret language correctly."
+    );
+  }
+
+  if (hasViewport) {
+    ts += 25;
+  } else {
+    subscoreReasons.TechnicalSEO.push(
+      "No responsive viewport meta tag — weak mobile friendliness can limit inclusion in AI answer surfaces."
+    );
+  }
+
+  if (hasCanonical) {
+    ts += 25;
+  } else {
+    subscoreReasons.TechnicalSEO.push(
+      "No canonical URL — answer engines may be unsure which version of this page to treat as primary."
+    );
+  }
+
+  if (hasOG) {
+    ts += 15;
+  } else {
+    subscoreReasons.TechnicalSEO.push(
+      "Open Graph tags are missing — many AI experiences use them for title/description when rendering cards."
+    );
+  }
+
+  if (updatedDetected) {
+    ts += 15;
+  } else {
+    subscoreReasons.TechnicalSEO.push(
+      "No clear “last updated” signal — fresher pages are preferred for AI-generated answers."
+    );
+  }
+
   subs.TechnicalSEO = clamp(ts);
 
+
+  // E-E-A-T / Trust
   // E-E-A-T / Trust
   let eat = 0;
   const hasAbout = !!doc.querySelector("a[href*='about']");
   const hasContact = !!doc.querySelector("a[href*='contact']");
   const refs = anchors.filter((a) => /\b(source|reference|learn more)\b/i.test(textContent(a)));
-  if (authorDetected) eat += 35;
-  if (hasAbout) eat += 20;
-  if (hasContact) eat += 20;
-  if (refs.length > 0) eat += 25;
+
+  if (authorDetected) {
+    eat += 35;
+  } else {
+    subscoreReasons.EATTrust.push(
+      "No clear author/organization info — answer engines struggle to assess expertise and experience."
+    );
+  }
+
+  if (hasAbout) {
+    eat += 20;
+  } else {
+    subscoreReasons.EATTrust.push(
+      "No About page link detected — brand identity and mission are important for trust."
+    );
+  }
+
+  if (hasContact) {
+    eat += 20;
+  } else {
+    subscoreReasons.EATTrust.push(
+      "No Contact link detected — lack of visible contact routes lowers perceived trustworthiness."
+    );
+  }
+
+  if (refs.length > 0) {
+    eat += 25;
+  } else {
+    subscoreReasons.EATTrust.push(
+      "No outbound reference/source links labeled as such — citing sources strengthens E-E-A-T."
+    );
+  }
+
   subs.EATTrust = clamp(eat);
+
 
   // Media Alt
   const mediaAlt = imgs.length ? (withAlt / imgs.length) * 100 : 100;
   subs.MediaAlt = clamp(mediaAlt);
+  if (imgs.length > 0 && withAlt < imgs.length) {
+    subscoreReasons.MediaAlt.push(
+      `Only ${withAlt} of ${imgs.length} images have alt text — AI cannot fully understand your visuals.`
+    );
+  }
+
 
   // Internal links
   subs.InternalLinks = clamp(Math.min(100, (internalLinks / 8) * 100));
+  if (internalLinks < 8) {
+    subscoreReasons.InternalLinks.push(
+      `Only ${internalLinks} internal links detected — AEO benefits from 8–12 contextual links to related pages.`
+    );
+  }
+
 
   // Weighted total
   const weights: Record<SubscoreKey, number> = {
@@ -723,6 +903,7 @@ function analyzeDocument(html: string, baseUrl: string): Report {
     internalLinks,
     externalLinks,
     subscores: subs,
+    subscoreReasons,  
     totalScore: Math.round(total),
     suggestions,
     suggestedFAQs: suggestedFaqs,
