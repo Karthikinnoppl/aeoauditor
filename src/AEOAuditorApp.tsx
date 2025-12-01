@@ -7,7 +7,12 @@ import type { ReactNode } from "react";
  * - Requires Tailwind (or replace classNames with your CSS)
  */
 
-const FAQ_API_URL = import.meta.env.VITE_FAQ_API_URL as string | undefined;
+//const FAQ_API_URL = import.meta.env.VITE_FAQ_API_URL as string | undefined;
+const FAQ_API_URL = import.meta.env.DEV
+  ? (import.meta.env.VITE_FAQ_API_URL_LOCAL ??
+     "http://localhost:4000/api/generate-faqs")
+  : (import.meta.env.VITE_FAQ_API_URL ??
+     "https://aeoauditor.onrender.com/api/generate-faqs");
 
 /* --------------------------- Utility helpers --------------------------- */
 
