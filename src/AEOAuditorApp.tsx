@@ -299,26 +299,41 @@ export default function AEOAuditorApp() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900">
+    <div className="min-h-screen w-full bg-brand-light text-brand-dark">
+      {/* Top nav bar */}
+      <div className="w-full bg-brand-dark text-white px-6 py-3 flex items-center gap-3">
+        <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="8" fill="#F15A29"/>
+          <path d="M10 20C10 14.477 14.477 10 20 10C23.09 10 25.858 11.348 27.778 13.5L24.95 16.05C23.718 14.782 22.0 14 20 14C16.686 14 14 16.686 14 20C14 23.314 16.686 26 20 26C22.0 26 23.718 25.218 24.95 23.95L27.778 26.5C25.858 28.652 23.09 30 20 30C14.477 30 10 25.523 10 20Z" fill="white"/>
+          <circle cx="28" cy="20" r="4" fill="white"/>
+        </svg>
+        <span className="font-semibold text-sm tracking-wide uppercase">CommerceShop</span>
+        <span className="ml-2 text-xs text-gray-400 hidden sm:inline">eCommerce Excellence Since 2009</span>
+      </div>
+
       <div className="mx-auto max-w-6xl p-6">
-        <header className="mb-4">
-          <h1 className="text-3xl font-bold tracking-tight">AEO Readiness Auditor</h1>
+        <header className="mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-block h-1 w-8 rounded-full bg-brand-primary"></span>
+            <span className="text-xs font-semibold uppercase tracking-widest text-brand-primary">AEO Tool</span>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-brand-dark">AEO Readiness Auditor</h1>
           <p className="text-sm text-slate-600 mt-1">
-            Analyze a page for Answer / Generative Engine Optimization and get a score + actionable recommendations.
+            Analyze any page for Answer Engine & Generative AI Optimization — get a score, signal breakdown, and copy-ready FAQ schema.
           </p>
         </header>
 
         {/* Mode toggle */}
         <section className="mb-4 flex flex-col gap-2">
-          <div className="inline-flex rounded-full bg-slate-100 p-1 text-xs">
+          <div className="inline-flex rounded-full bg-white border border-brand-muted p-1 text-xs shadow-sm">
             <button
               type="button"
               onClick={() => setMode("html")}
               className={
                 "px-3 py-1 rounded-full font-medium transition " +
                 (mode === "html"
-                  ? "bg-white shadow text-slate-900"
-                  : "text-slate-600 hover:text-slate-900")
+                  ? "bg-brand-primary shadow text-white"
+                  : "text-slate-600 hover:text-brand-primary")
               }
             >
               Paste raw HTML (most accurate)
@@ -329,8 +344,8 @@ export default function AEOAuditorApp() {
               className={
                 "px-3 py-1 rounded-full font-medium transition " +
                 (mode === "fetch"
-                  ? "bg-white shadow text-slate-900"
-                  : "text-slate-600 hover:text-slate-900")
+                  ? "bg-brand-primary shadow text-white"
+                  : "text-slate-600 hover:text-brand-primary")
               }
             >
               Fetch via URL / proxy (may strip SEO tags)
@@ -343,7 +358,7 @@ export default function AEOAuditorApp() {
         </section>
 
         <section className="mb-4 grid gap-4 md:grid-cols-3">
-          <div className="md:col-span-2 bg-white rounded-2xl shadow p-4">
+          <div className="md:col-span-2 bg-white rounded-2xl shadow-sm border border-brand-muted p-4">
             <label className="text-sm font-medium flex items-center justify-between">
               <span>Page URL</span>
               {mode === "fetch" && (
@@ -353,7 +368,7 @@ export default function AEOAuditorApp() {
               )}
             </label>
             <input
-              className="mt-1 w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="mt-1 w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
               placeholder="https://example.com/your-page (or bare: example.com)"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -367,14 +382,14 @@ export default function AEOAuditorApp() {
             <div className="mt-3">
               <label className="text-xs font-medium">CORS / HTML proxy (optional)</label>
               <input
-                className="mt-1 w-full rounded-xl border border-slate-200 p-2 text-xs"
+                className="mt-1 w-full rounded-xl border border-brand-muted p-2 text-xs"
                 placeholder="https://r.jina.ai/  or  http://localhost:8787/fetch?url="
                 value={corsProxy}
                 onChange={(e) => setCorsProxy(e.target.value)}
               />
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow p-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-brand-muted p-4">
             <label className="text-sm font-medium flex items-center justify-between">
               <span>Or paste HTML</span>
               {mode === "html" && (
@@ -384,7 +399,7 @@ export default function AEOAuditorApp() {
               )}
             </label>
             <textarea
-              className="mt-1 w-full rounded-xl border border-slate-200 p-3 h-32 text-xs font-mono"
+              className="mt-1 w-full rounded-xl border border-brand-muted p-3 h-32 text-xs font-mono"
               placeholder="<!doctype html>..."
               value={html}
               onChange={(e) => setHtml(e.target.value)}
@@ -396,14 +411,14 @@ export default function AEOAuditorApp() {
           <button
             onClick={handleFetch}
             disabled={!canAnalyze || loading}
-            className="rounded-xl bg-slate-900 text-white px-5 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-xl bg-brand-primary hover:bg-brand-deep text-white px-6 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             {loading ? "Analyzing…" : "Analyze Page"}
           </button>
           {report && (
             <button
               onClick={() => copy(JSON.stringify(report, null, 2))}
-              className="rounded-xl bg-white border border-slate-200 px-4 py-3 hover:bg-slate-50"
+              className="rounded-xl bg-white border border-brand-muted px-4 py-3 text-brand-dark hover:bg-brand-light transition"
             >
               Copy JSON Report
             </button>
@@ -461,8 +476,23 @@ export default function AEOAuditorApp() {
           </div>
         )}
 
-        <footer className="mt-16 text-xs text-slate-500">
-          AEO Readiness Auditor • Heuristic-based. Use alongside human judgment and testing.
+        <footer className="mt-16 border-t border-brand-muted pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="text-xs text-slate-500">
+            AEO Readiness Auditor • Heuristic-based. Use alongside human judgment and testing.
+          </div>
+          <a
+            href="https://www.thecommerceshop.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs font-semibold text-brand-primary hover:text-brand-deep transition"
+          >
+            <svg width="14" height="14" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="8" fill="#F15A29"/>
+              <path d="M10 20C10 14.477 14.477 10 20 10C23.09 10 25.858 11.348 27.778 13.5L24.95 16.05C23.718 14.782 22.0 14 20 14C16.686 14 14 16.686 14 20C14 23.314 16.686 26 20 26C22.0 26 23.718 25.218 24.95 23.95L27.778 26.5C25.858 28.652 23.09 30 20 30C14.477 30 10 25.523 10 20Z" fill="white"/>
+              <circle cx="28" cy="20" r="4" fill="white"/>
+            </svg>
+            Built by TheCommerceShop
+          </a>
         </footer>
       </div>
     </div>
@@ -950,10 +980,10 @@ function Card({
   actions?: ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow p-5">
-      <div className="flex items-start justify-between gap-3">
+    <div className="bg-white rounded-2xl shadow-sm border border-brand-muted p-5">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3 mb-1">
         <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 className="text-lg font-semibold text-brand-dark">{title}</h2>
           {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
         </div>
         {actions}
@@ -964,14 +994,17 @@ function Card({
 }
 
 function ScoreBar({ label, score }: { label: string; score: number }) {
+  const pct = clamp(score);
+  const color =
+    pct >= 70 ? "bg-brand-primary" : pct >= 45 ? "bg-amber-400" : "bg-red-400";
   return (
     <div>
       <div className="flex justify-between text-sm">
-        <span>{label}</span>
-        <span className="font-medium">{Math.round(score)}</span>
+        <span className="text-slate-700">{label}</span>
+        <span className="font-semibold text-brand-dark">{Math.round(score)}</span>
       </div>
-      <div className="h-2 bg-slate-100 rounded-full mt-1 overflow-hidden">
-        <div className="h-full bg-slate-900" style={{ width: `${clamp(score)}%` }} />
+      <div className="h-2 bg-brand-muted rounded-full mt-1 overflow-hidden">
+        <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -982,9 +1015,9 @@ function ScoreCard({ report }: { report: Report }) {
     <Card title="AEO Readiness Score" subtitle={report.url}>
       <div className="grid gap-6 md:grid-cols-3 items-center">
         <div className="md:col-span-1 flex items-center justify-center">
-          <div className="relative h-40 w-40 rounded-full bg-slate-100 grid place-items-center">
-            <div className="text-4xl font-bold">{report.totalScore}</div>
-            <div className="text-xs text-slate-500 absolute bottom-3">/ 100</div>
+          <div className="relative h-40 w-40 rounded-full bg-brand-light border-4 border-brand-primary grid place-items-center shadow-md">
+            <div className="text-4xl font-bold text-brand-primary">{report.totalScore}</div>
+            <div className="text-xs text-slate-500 absolute bottom-4 font-medium">/ 100</div>
           </div>
         </div>
         <div className="md:col-span-2 grid gap-3">
@@ -1148,21 +1181,21 @@ function FAQSuggestionsCard({
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           onClick={() => faqsToRender.length > 0 && onCopy(faqJsonForCopy)}
-          className="rounded-lg bg-white border border-slate-200 px-3 py-2 text-sm disabled:opacity-50"
+          className="rounded-lg bg-white border border-brand-muted px-3 py-2 text-sm text-brand-dark hover:bg-brand-light transition disabled:opacity-50"
           disabled={faqsToRender.length === 0}
         >
           Copy FAQ JSON
         </button>
         <button
           onClick={() => faqsToRender.length > 0 && onCopy(renderFAQMarkdown(faqsToRender))}
-          className="rounded-lg bg-white border border-slate-200 px-3 py-2 text-sm disabled:opacity-50"
+          className="rounded-lg bg-white border border-brand-muted px-3 py-2 text-sm text-brand-dark hover:bg-brand-light transition disabled:opacity-50"
           disabled={faqsToRender.length === 0}
         >
           Copy FAQ Markdown
         </button>
         <button
           onClick={handleGenerateAI}
-          className="rounded-lg bg-slate-900 text-white px-3 py-2 text-sm disabled:opacity-50"
+          className="rounded-lg bg-brand-primary hover:bg-brand-deep text-white px-3 py-2 text-sm font-semibold transition disabled:opacity-50"
           disabled={aiLoading}
         >
           {aiLoading ? "Generating…" : "Generate AI FAQs"}
@@ -1193,7 +1226,7 @@ function JSONLDCard({
 }) {
   return (
     <Card title="JSON-LD Preview" subtitle="Drop into your <head> or via GTM">
-      <pre className="text-xs bg-slate-50 rounded-xl p-3 overflow-auto max-h-72">
+      <pre className="text-xs bg-brand-light rounded-xl p-3 overflow-auto max-h-72">
         <code>{report.faqJsonLD}</code>
       </pre>
       <div className="mt-3 flex gap-2">
@@ -1201,14 +1234,14 @@ function JSONLDCard({
           onClick={() =>
             onCopy(`<script type="application/ld+json">\n${report.faqJsonLD}\n<\/script>`)
           }
-          className="rounded-lg bg-slate-900 text-white px-3 py-2 text-sm"
+          className="rounded-lg bg-brand-primary hover:bg-brand-deep text-white px-3 py-2 text-sm font-semibold transition"
         >
           {/* literal text so JSX doesn't interpret a tag */}
           Copy with &lt;script&gt; tag
         </button>
         <button
           onClick={() => onCopy(report.faqJsonLD)}
-          className="rounded-lg bg-white border border-slate-200 px-3 py-2 text-sm"
+          className="rounded-lg bg-white border border-brand-muted px-3 py-2 text-sm text-brand-dark hover:bg-brand-light transition"
         >
           Copy Raw JSON
         </button>
@@ -1223,11 +1256,11 @@ function MetaCard({ report }: { report: Report }) {
       <div className="space-y-3 text-sm">
         <div>
           <div className="text-slate-500">Suggested Title (≤65 chars)</div>
-          <div className="mt-1 p-2 bg-slate-50 rounded">{suggestTitle(report)}</div>
+          <div className="mt-1 p-2 bg-brand-light rounded">{suggestTitle(report)}</div>
         </div>
         <div>
           <div className="text-slate-500">Suggested Meta Description (80–170 chars)</div>
-          <div className="mt-1 p-2 bg-slate-50 rounded">{suggestDescription(report)}</div>
+          <div className="mt-1 p-2 bg-brand-light rounded">{suggestDescription(report)}</div>
         </div>
       </div>
     </Card>
